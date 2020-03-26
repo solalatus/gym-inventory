@@ -35,7 +35,7 @@ class InventoryEnv(gym.Env, utils.EzPickle):
         self._seed()
 
         # Start the first round
-        self._reset()
+        self.reset()
 
     def demand(self):
         return np.random.poisson(self.lam)
@@ -57,7 +57,7 @@ class InventoryEnv(gym.Env, utils.EzPickle):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def _step(self, action):
+    def step(self, action):
         assert self.action_space.contains(action)
         obs = self.state
         demand = self.demand()
@@ -67,5 +67,5 @@ class InventoryEnv(gym.Env, utils.EzPickle):
         done = 0
         return obs2, reward, done, {}
 
-    def _reset(self):
+    def reset(self):
         return self.state
