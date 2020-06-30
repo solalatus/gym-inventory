@@ -18,39 +18,40 @@ class InventoryEnv(gym.Env, utils.EzPickle):
     Reinforcement Learning by Csaba Szepesvari (2010).
     https://sites.ualberta.ca/~szepesva/RLBook.html
     """
-
-    def __init__(self, n=100, k=5, c=2, h=2, p=3, lam=8):
-        self.n = n
-        self.action_space = spaces.Discrete(n)
-        self.observation_space = spaces.Discrete(n)
-        self.max = n
-        self.state = n
-        self.k = k
-        self.c = c
-        self.h = h
-        self.p = p
+ 
+    def __init__(self, initial_stock=100, fixed_entry_cost=5, item_cost=2, inventory_cost=2, payment=3, lam=8, random_seed=None):
+        self.initial_stock = initial_stock
+        self.action_space = spaces.Discrete(initial_stock)
+        self.observation_space = spaces.Discrete(initial_stock)
+        self.maximum = initial_stock
+        self.state = initial_stock
+        self.fixed_entry_cost = fixed_entry_cost
+        self.item_cost = item_cost
+        self.inventory_cost = inventory_cost
+        self.payment = payment
         self.lam = lam
-
-        # Set seed
-        self._seed()
+        if random_seed:
+            self._seed(random_seed)
+        else:
+            self._seed()
 
         # Start the first round
         self.reset()
 
     def demand(self):
-        return np.random.poisson(self.lam)
+        return self.np_random.poisson(self.lam)
 
     def transition(self, x, a, d):
-        m = self.max
-        return max(min(x + a, m) - d, 0)
+        maximum = self.maximum
+        return max(min(x + a, maximum) - d, 0)
 
-    def reward(self, x, a, y):
-        k = self.k
-        m = self.max
-        c = self.c
-        h = self.h
-        p = self.p
-        r = -k * (a > 0) - c * max(min(x + a, m) - x, 0) - h * x + p * max(min(x + a, m) - y, 0)
+    def reward(self, x, action, y):
+        fixed_entry_cost = self.fixed_entry_cost
+        maximum = self.maximum
+        item_cost = self.item_cost
+        inventory_cost = self.inventory_cost
+        payment = self.payment
+        r = -fixed_entry_cost * (action > 0) - item_cost * max(min(x + action, maximum) - x, 0) - inventory_cost * x + payment * max(min(x + action, maximum) - y, 0)
         return r
 
     def _seed(self, seed=None):
@@ -59,13 +60,15 @@ class InventoryEnv(gym.Env, utils.EzPickle):
 
     def step(self, action):
         assert self.action_space.contains(action)
-        obs = self.state
+        observation = self.state
         demand = self.demand()
-        obs2 = self.transition(obs, action, demand)
-        self.state = obs2
-        reward = self.reward(obs, action, obs2)
+        new_observation = self.transition(observation, action, demand)
+        self.state = new_observation
+        reward = self.reward(observation, action, new_observation)
         done = 0
-        return obs2, reward, done, {}
+        last_demand = demand
+        return new_observation, last_demand, reward, done, {}
 
     def reset(self):
+        self.state = self.initial_stock
         return self.state
